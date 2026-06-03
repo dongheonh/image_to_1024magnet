@@ -1,0 +1,1081 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Image → 1024 Magnet CSV</title>
+  <style>
+    :root {
+      --bg:     #000000;
+      --panel:  #111214;
+      --ink:    #d7dae0;
+      --muted:  #9aa3ad;
+      --line:   #3d424d;
+      --accent: #ffd866;
+      --north:  #ff6b5a;
+      --south:  #66a8ff;
+      --off:    #5a6270;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Noto Sans", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      min-height: 100vh;
+    }
+
+    .wrap {
+      max-width: 1520px;
+      margin: 0 auto;
+      padding: 26px;
+      display: grid;
+      gap: 22px;
+      grid-template-columns: 1fr 400px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+    }
+
+    h1, h2 { margin: 0; font-weight: 700; letter-spacing: 0.01em; }
+
+    .sim-header {
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .sim-header h1 { font-size: 1.35rem; }
+
+    .sim-metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(130px, auto));
+      gap: 8px;
+    }
+
+    .metric-box {
+      min-width: 138px;
+      padding: 8px 10px;
+      border: 1px solid #505662;
+      border-radius: 10px;
+      background: #0b0c0f;
+      text-align: right;
+    }
+
+    .metric-label {
+      display: block;
+      color: var(--muted);
+      font-size: 0.72rem;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .metric-value {
+      display: block;
+      margin-top: 2px;
+      color: #e9ecf2;
+      font-size: 1.02rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--line);
+      align-items: center;
+    }
+
+    .controls-hint {
+      font-size: 0.81rem;
+      color: var(--muted);
+    }
+
+    button {
+      border: 1px solid #505662;
+      background: #181a1f;
+      color: #dfe2ea;
+      border-radius: 10px;
+      padding: 9px 13px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: border-color 0.15s, transform 0.15s, background 0.15s;
+      white-space: nowrap;
+    }
+
+    button:hover {
+      border-color: #8f98a8;
+      background: #242830;
+      transform: translateY(-1px);
+    }
+
+    button.primary {
+      background: var(--accent);
+      color: #141414;
+      border-color: var(--accent);
+      font-weight: 700;
+    }
+
+    button.primary:hover {
+      background: #ffe899;
+      border-color: #ffe899;
+    }
+
+    button.is-active {
+      background: #ffd866;
+      color: #141414;
+      border-color: #ffd866;
+      font-weight: 700;
+    }
+
+    .canvas-wrap {
+      position: relative;
+      padding: 18px;
+    }
+
+    canvas#magnetCanvas {
+      width: 100%;
+      height: auto;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      display: block;
+      background: #0d0f13;
+    }
+
+    /* ── Side ── */
+    .side {
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+      background: #14171c;
+    }
+
+    .card h2 {
+      font-size: 0.95rem;
+      margin-bottom: 12px;
+      color: #e9ecf2;
+    }
+
+    /* Drop zone */
+    .drop-zone {
+      border: 2px dashed #505662;
+      border-radius: 10px;
+      padding: 16px 12px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.86rem;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s, color 0.15s;
+      margin-bottom: 12px;
+      user-select: none;
+    }
+
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--accent);
+      background: rgba(255,216,102,0.06);
+      color: var(--accent);
+    }
+
+    .drop-icon { font-size: 1.5rem; margin-bottom: 4px; line-height: 1; }
+    .drop-filename {
+      margin-top: 5px;
+      font-size: 0.77rem;
+      color: #aab3bf;
+      word-break: break-all;
+    }
+
+    /* Crop canvas */
+    .crop-wrap {
+      position: relative;
+      margin-bottom: 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #0d0f13;
+    }
+
+    canvas#cropCanvas {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .crop-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .crop-hint {
+      font-size: 0.78rem;
+      color: var(--muted);
+      flex: 1;
+    }
+
+    /* Threshold */
+    .thresh-row {
+      display: grid;
+      grid-template-columns: auto 1fr 36px;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .thresh-row label {
+      font-size: 0.83rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .thresh-row input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .thresh-val {
+      font-size: 0.83rem;
+      color: #e9ecf2;
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+    }
+
+    /* Preview canvases */
+    .preview-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .preview-box { display: flex; flex-direction: column; gap: 4px; }
+
+    .preview-label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .preview-box canvas {
+      width: 100%;
+      aspect-ratio: 1;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      image-rendering: pixelated;
+      background: #0d0f13;
+    }
+
+    /* Export */
+    .export-name-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .export-name-row input[type="text"] {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #505662;
+      border-radius: 8px;
+      background: #090b0f;
+      color: #e6e9ef;
+      font-size: 0.88rem;
+      outline: none;
+    }
+
+    .export-name-row input[type="text"]:focus { border-color: #8f98a8; }
+
+    .export-ext { font-size: 0.83rem; color: var(--muted); }
+
+    /* Legend */
+    .legend { display: flex; flex-direction: column; gap: 7px; font-size: 0.85rem; color: #c4cad3; }
+    .legend-row { display: flex; align-items: center; gap: 8px; }
+    .dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+    .legend-note { margin-top: 10px; font-size: 0.79rem; color: var(--muted); line-height: 1.5; }
+
+    @media (max-width: 1100px) {
+      .wrap { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ── Main: magnet grid ── -->
+  <section class="panel">
+    <div class="sim-header">
+      <h1>Image → 1024 Magnet Map</h1>
+      <div class="sim-metrics">
+        <div class="metric-box">
+          <span class="metric-label">Active Magnets</span>
+          <span class="metric-value" id="activeMagnets">0</span>
+        </div>
+        <div class="metric-box">
+          <span class="metric-label">Active Fraction</span>
+          <span class="metric-value" id="activeFraction">0.0%</span>
+        </div>
+      </div>
+    </div>
+    <div class="controls">
+      <button id="btnClear">Clear</button>
+      <span class="controls-hint">Click / drag magnets to cycle: OFF → N → S → OFF</span>
+    </div>
+    <div class="canvas-wrap" id="canvasWrap">
+      <canvas id="magnetCanvas" width="980" height="637"></canvas>
+    </div>
+  </section>
+
+  <!-- ── Side ── -->
+  <aside class="side">
+
+    <!-- Upload + Crop card -->
+    <div class="card">
+      <h2>Upload &amp; Crop</h2>
+
+      <div class="drop-zone" id="dropZone">
+        <div class="drop-icon">⬆</div>
+        <div>Drop image here or click to browse</div>
+        <div style="margin-top:3px;font-size:0.76rem;opacity:0.6">PNG · JPG · GIF · WebP · BMP</div>
+        <div class="drop-filename" id="dropFilename"></div>
+      </div>
+      <input type="file" id="fileInput" accept="image/*" style="display:none" />
+
+      <!-- Crop canvas -->
+      <div class="crop-wrap" id="cropWrap">
+        <canvas id="cropCanvas" width="372" height="256"></canvas>
+      </div>
+
+      <div class="crop-actions">
+        <button id="btnResetCrop">Reset Crop</button>
+        <span class="crop-hint">Drag to move · corner to resize · aspect locked</span>
+      </div>
+
+      <div class="thresh-row">
+        <label for="threshSlider">Threshold</label>
+        <input type="range" id="threshSlider" min="0" max="255" value="128" />
+        <span class="thresh-val" id="threshValue">128</span>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:2px">
+        <button id="btnOtsu">Auto (Otsu)</button>
+        <button id="btnInvert">Invert Binary</button>
+      </div>
+
+      <div class="preview-row">
+        <div class="preview-box">
+          <div class="preview-label">Grayscale 32×32</div>
+          <canvas id="prevGray" width="32" height="32"></canvas>
+        </div>
+        <div class="preview-box">
+          <div class="preview-label">Binary mapping</div>
+          <canvas id="prevBinary" width="32" height="32"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Export card -->
+    <div class="card">
+      <h2>Export CSV</h2>
+      <div class="export-name-row">
+        <input type="text" id="exportName" value="image_magnet" spellcheck="false" />
+        <span class="export-ext">.csv</span>
+      </div>
+      <button id="btnExport" class="primary" style="width:100%">Download CSV</button>
+    </div>
+
+    <!-- Legend -->
+    <div class="card">
+      <h2>Legend</h2>
+      <div class="legend">
+        <div class="legend-row">
+          <span class="dot" style="background:var(--north)"></span>
+          <span>North <code style="color:var(--accent)">+7</code> — dark pixels (gray &lt; threshold)</span>
+        </div>
+        <div class="legend-row">
+          <span class="dot" style="background:var(--south)"></span>
+          <span>South <code style="color:var(--accent)">−7</code> — manual only</span>
+        </div>
+        <div class="legend-row">
+          <span class="dot" style="background:var(--off)"></span>
+          <span>OFF <code style="color:var(--accent)">0</code> — bright pixels</span>
+        </div>
+      </div>
+      <div class="legend-note">
+        CSV: 32 lines × 32 values, column-major bottom→top (SAM LAB)
+      </div>
+    </div>
+
+  </aside>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────
+//  Constants
+// ─────────────────────────────────────────────────────────────
+const ROWS = 32, COLS = 32, TOTAL = 1024;
+const D_MM  = 20;
+const DX_MM = D_MM;
+const DY_MM = D_MM * Math.sqrt(3) / 2;
+const PAD   = 26;
+
+const boundsMm = {
+  xMin: -D_MM / 2,
+  xMax: (COLS - 1 + 0.5) * DX_MM + D_MM / 2,
+  yMin: -D_MM / 2,
+  yMax: (ROWS - 1) * DY_MM + D_MM / 2
+};
+
+// Physical aspect ratio of the magnet grid (used for crop locking)
+const CROP_ASPECT = (boundsMm.xMax - boundsMm.xMin) / (boundsMm.yMax - boundsMm.yMin);
+
+// ─────────────────────────────────────────────────────────────
+//  DOM refs
+// ─────────────────────────────────────────────────────────────
+const magnetCanvas     = document.getElementById("magnetCanvas");
+const mctx             = magnetCanvas.getContext("2d");
+const activeMagnetsEl  = document.getElementById("activeMagnets");
+const activeFractionEl = document.getElementById("activeFraction");
+
+const dropZone         = document.getElementById("dropZone");
+const dropFilename     = document.getElementById("dropFilename");
+const fileInput        = document.getElementById("fileInput");
+
+const cropCanvas       = document.getElementById("cropCanvas");
+const cctx             = cropCanvas.getContext("2d");
+
+const threshSlider     = document.getElementById("threshSlider");
+const threshValueEl    = document.getElementById("threshValue");
+
+const prevGrayCanvas   = document.getElementById("prevGray");
+const prevBinaryCanvas = document.getElementById("prevBinary");
+const prevGrayCtx      = prevGrayCanvas.getContext("2d");
+const prevBinaryCtx    = prevBinaryCanvas.getContext("2d");
+
+const exportNameInput  = document.getElementById("exportName");
+
+// ─────────────────────────────────────────────────────────────
+//  State
+// ─────────────────────────────────────────────────────────────
+const state     = new Int8Array(TOTAL);
+const positions = new Array(TOTAL);
+
+// Image & crop state
+let imgEl   = null;   // loaded HTMLImageElement
+let invertBinary = false;
+let imgOffX = 0, imgOffY = 0, imgScale = 1;  // image display on cropCanvas
+
+let cropRect = { x: 0, y: 0, w: 0, h: 0 };  // in cropCanvas pixels
+let grayPixels = null;  // Float32Array[1024]
+
+// Crop drag state
+let cropDrag = null;
+// { action: "move"|"nw"|"ne"|"sw"|"se", startMx, startMy, startRect }
+
+// Magnet canvas interaction
+let selected = -1;
+let isDragging = false, dragMoved = false, lastDragId = -1;
+
+const palette = {
+  north: "#ff6b5a", south: "#66a8ff", off: "#5a6270", edge: "#c2c7d0"
+};
+
+// ─────────────────────────────────────────────────────────────
+//  Geometry helpers
+// ─────────────────────────────────────────────────────────────
+function buildPositions() {
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      positions[r * COLS + c] = {
+        x: (c + ((r & 1) ? 0.5 : 0)) * DX_MM,
+        y: r * DY_MM
+      };
+    }
+  }
+}
+
+function getLayoutTransform(w = magnetCanvas.width, h = magnetCanvas.height) {
+  const cW = boundsMm.xMax - boundsMm.xMin;
+  const cH = boundsMm.yMax - boundsMm.yMin;
+  const s  = Math.min((w - PAD * 2) / cW, (h - PAD * 2) / cH);
+  return { s, ox: (w - cW * s) / 2, oy: (h - cH * s) / 2, contentW: cW, contentH: cH };
+}
+
+function mmToPx(xMm, yMm) {
+  const t = getLayoutTransform();
+  return { x: t.ox + (xMm - boundsMm.xMin) * t.s, y: t.oy + (yMm - boundsMm.yMin) * t.s };
+}
+
+function hexToRgba(hex, a) {
+  const h = hex.replace("#","");
+  const f = h.length===3 ? h.split("").map(c=>c+c).join("") : h;
+  const v = parseInt(f,16);
+  return `rgba(${(v>>16)&255},${(v>>8)&255},${v&255},${Math.max(0,Math.min(1,a)).toFixed(3)})`;
+}
+
+// ─────────────────────────────────────────────────────────────
+//  Magnet canvas rendering
+// ─────────────────────────────────────────────────────────────
+function drawMagnets() {
+  mctx.clearRect(0, 0, magnetCanvas.width, magnetCanvas.height);
+  const rPx = mmToPx(D_MM / 2, 0).x - mmToPx(0, 0).x;
+  for (let id = 0; id < TOTAL; id++) {
+    const p  = positions[id];
+    const px = mmToPx(p.x, p.y);
+    mctx.beginPath();
+    mctx.arc(px.x, px.y, rPx, 0, Math.PI * 2);
+    if      (state[id] > 0) mctx.fillStyle = hexToRgba(palette.north, 1.0);
+    else if (state[id] < 0) mctx.fillStyle = hexToRgba(palette.south, 1.0);
+    else                    mctx.fillStyle = hexToRgba(palette.off,   0.72);
+    mctx.fill();
+    mctx.lineWidth   = id === selected ? 2.2 : 0.8;
+    mctx.strokeStyle = id === selected ? "#ffe082" : palette.edge;
+    mctx.stroke();
+  }
+}
+
+function drawAxes() {
+  const t  = getLayoutTransform();
+  const by = t.oy + t.contentH * t.s;
+  const ox = 8, oy = Math.round(Math.min(magnetCanvas.height - 12, by - 8));
+  const len = 36;
+  mctx.save();
+  mctx.strokeStyle = "rgba(235,239,246,0.92)";
+  mctx.lineWidth = 1.4;
+  mctx.beginPath();
+  mctx.moveTo(ox, oy); mctx.lineTo(ox + len, oy);
+  mctx.moveTo(ox, oy); mctx.lineTo(ox, Math.max(8, oy - len));
+  mctx.stroke();
+  mctx.fillStyle = "rgba(235,239,246,0.96)";
+  mctx.font = "12px Segoe UI, sans-serif";
+  mctx.textAlign = "left";   mctx.textBaseline = "middle";
+  mctx.fillText("x", ox + len + 5, oy);
+  mctx.textAlign = "center"; mctx.textBaseline = "bottom";
+  mctx.fillText("y", ox, Math.max(8, oy - len) - 4);
+  mctx.restore();
+}
+
+function renderSummary() {
+  let n = 0;
+  for (let i = 0; i < TOTAL; i++) if (state[i] !== 0) n++;
+  activeMagnetsEl.textContent = String(n);
+  activeFractionEl.textContent = `${(n / TOTAL * 100).toFixed(1)}%`;
+}
+
+function redraw() { drawMagnets(); drawAxes(); renderSummary(); }
+
+// ─────────────────────────────────────────────────────────────
+//  Crop canvas rendering
+// ─────────────────────────────────────────────────────────────
+const HANDLE_R = 7;   // hit radius for corner handles
+const HANDLE_W = 10;  // drawn handle half-size
+
+function getCropHandles() {
+  const { x, y, w, h } = cropRect;
+  return [
+    { x: x,   y: y,   type: "nw" },
+    { x: x+w, y: y,   type: "ne" },
+    { x: x,   y: y+h, type: "sw" },
+    { x: x+w, y: y+h, type: "se" },
+  ];
+}
+
+function drawCropCanvas() {
+  const CW = cropCanvas.width, CH = cropCanvas.height;
+  cctx.clearRect(0, 0, CW, CH);
+
+  // Background
+  cctx.fillStyle = "#0d0f13";
+  cctx.fillRect(0, 0, CW, CH);
+
+  if (!imgEl) {
+    cctx.fillStyle = "#505662";
+    cctx.font = "13px Segoe UI, sans-serif";
+    cctx.textAlign = "center";
+    cctx.textBaseline = "middle";
+    cctx.fillText("No image loaded", CW / 2, CH / 2);
+    return;
+  }
+
+  // Draw image
+  const dw = imgEl.naturalWidth  * imgScale;
+  const dh = imgEl.naturalHeight * imgScale;
+  cctx.drawImage(imgEl, imgOffX, imgOffY, dw, dh);
+
+  const { x, y, w, h } = cropRect;
+
+  // Dim outside crop
+  cctx.fillStyle = "rgba(0,0,0,0.55)";
+  cctx.fillRect(0,   0,   CW,  y          );  // top
+  cctx.fillRect(0,   y+h, CW,  CH - y - h );  // bottom
+  cctx.fillRect(0,   y,   x,   h          );  // left
+  cctx.fillRect(x+w, y,   CW - x - w, h  );  // right
+
+  // Rule-of-thirds grid inside crop
+  cctx.strokeStyle = "rgba(255,216,102,0.22)";
+  cctx.lineWidth = 0.7;
+  for (let i = 1; i <= 2; i++) {
+    const gx = x + w * i / 3;
+    const gy = y + h * i / 3;
+    cctx.beginPath();
+    cctx.moveTo(gx, y); cctx.lineTo(gx, y + h);
+    cctx.moveTo(x, gy); cctx.lineTo(x + w, gy);
+    cctx.stroke();
+  }
+
+  // Crop border
+  cctx.strokeStyle = "#ffd866";
+  cctx.lineWidth = 1.5;
+  cctx.strokeRect(x, y, w, h);
+
+  // Corner handles
+  cctx.fillStyle = "#ffd866";
+  getCropHandles().forEach(({ x: hx, y: hy }) => {
+    cctx.fillRect(hx - HANDLE_W / 2, hy - HANDLE_W / 2, HANDLE_W, HANDLE_W);
+  });
+
+  // Size info label
+  const iw = Math.round(w / imgScale);
+  const ih = Math.round(h / imgScale);
+  const label = `${iw} × ${ih} px`;
+  cctx.font = "bold 11px Segoe UI, sans-serif";
+  const tw = cctx.measureText(label).width;
+  const lx = Math.min(x + 4, CW - tw - 6);
+  const ly = y + h + (y + h + 16 < CH ? 4 : -16);
+  cctx.fillStyle = "rgba(0,0,0,0.65)";
+  cctx.fillRect(lx - 2, ly - 1, tw + 4, 14);
+  cctx.fillStyle = "#ffd866";
+  cctx.fillText(label, lx, ly + 10);
+}
+
+function getCropCanvasPos(e) {
+  const rect = cropCanvas.getBoundingClientRect();
+  return {
+    x: (e.clientX - rect.left) * (cropCanvas.width  / rect.width),
+    y: (e.clientY - rect.top)  * (cropCanvas.height / rect.height)
+  };
+}
+
+function cropHitTest(mx, my) {
+  for (const h of getCropHandles()) {
+    if (Math.abs(mx - h.x) <= HANDLE_R && Math.abs(my - h.y) <= HANDLE_R)
+      return h.type;  // "nw" | "ne" | "sw" | "se"
+  }
+  const { x, y, w, h } = cropRect;
+  if (mx >= x && mx <= x + w && my >= y && my <= y + h) return "move";
+  return null;
+}
+
+function updateCropCursor(mx, my) {
+  const hit = cropHitTest(mx, my);
+  const map = { nw: "nw-resize", ne: "ne-resize", sw: "sw-resize", se: "se-resize", move: "move" };
+  cropCanvas.style.cursor = map[hit] || "default";
+}
+
+function clampCropRect(r) {
+  if (!imgEl) return r;
+  const imgX0 = imgOffX, imgY0 = imgOffY;
+  const imgX1 = imgOffX + imgEl.naturalWidth  * imgScale;
+  const imgY1 = imgOffY + imgEl.naturalHeight * imgScale;
+  const MIN_W = 20;
+  let { x, y, w, h } = r;
+  w = Math.max(MIN_W, w);
+  h = w / CROP_ASPECT;
+  x = Math.max(imgX0, Math.min(imgX1 - w, x));
+  y = Math.max(imgY0, Math.min(imgY1 - h, y));
+  // if still out of bounds after clamping position, shrink
+  if (x + w > imgX1) { w = imgX1 - x; h = w / CROP_ASPECT; }
+  if (y + h > imgY1) { h = imgY1 - y; w = h * CROP_ASPECT; x = Math.max(imgX0, Math.min(imgX1 - w, x)); }
+  return { x, y, w, h };
+}
+
+// ─────────────────────────────────────────────────────────────
+//  Image processing
+// ─────────────────────────────────────────────────────────────
+function computeOtsu(gray) {
+  const hist = new Array(256).fill(0);
+  const n = gray.length;
+  for (let i = 0; i < n; i++) hist[Math.round(gray[i])]++;
+  let sum = 0;
+  for (let i = 0; i < 256; i++) sum += i * hist[i];
+  let sumB = 0, wB = 0, maxVar = 0, thresh = 128;
+  for (let t = 0; t < 256; t++) {
+    wB += hist[t];
+    if (!wB) continue;
+    const wF = n - wB;
+    if (!wF) break;
+    sumB += t * hist[t];
+    const mB = sumB / wB, mF = (sum - sumB) / wF;
+    const v = wB * wF * (mB - mF) ** 2;
+    if (v > maxVar) { maxVar = v; thresh = t; }
+  }
+  return thresh;
+}
+
+function extractGray32(srcImg, srcX, srcY, srcW, srcH) {
+  const oc = document.createElement("canvas");
+  oc.width = 32; oc.height = 32;
+  const octx = oc.getContext("2d");
+  octx.fillStyle = "#ffffff";
+  octx.fillRect(0, 0, 32, 32);
+  octx.drawImage(srcImg, srcX, srcY, srcW, srcH, 0, 0, 32, 32);
+  const raw = octx.getImageData(0, 0, 32, 32).data;
+  const g32 = new Float32Array(TOTAL);
+  for (let i = 0; i < TOTAL; i++) {
+    g32[i] = 0.299 * raw[i*4] + 0.587 * raw[i*4+1] + 0.114 * raw[i*4+2];
+  }
+  return g32;
+}
+
+function updatePreviews(gray, threshold) {
+  const gd = prevGrayCtx.createImageData(32, 32);
+  const bd = prevBinaryCtx.createImageData(32, 32);
+  for (let i = 0; i < TOTAL; i++) {
+    const v = Math.round(gray[i]);
+    gd.data[i*4]=v; gd.data[i*4+1]=v; gd.data[i*4+2]=v; gd.data[i*4+3]=255;
+    const isNorth = invertBinary ? gray[i] >= threshold : gray[i] < threshold;
+    if (isNorth) {
+      bd.data[i*4]=255; bd.data[i*4+1]=107; bd.data[i*4+2]=90;
+    } else {
+      bd.data[i*4]=90; bd.data[i*4+1]=98; bd.data[i*4+2]=112;
+    }
+    bd.data[i*4+3] = 255;
+  }
+  prevGrayCtx.putImageData(gd, 0, 0);
+  prevBinaryCtx.putImageData(bd, 0, 0);
+}
+
+function applyThreshold(threshold) {
+  if (!grayPixels) return;
+  for (let id = 0; id < TOTAL; id++) {
+    const isNorth = invertBinary ? grayPixels[id] >= threshold : grayPixels[id] < threshold;
+    state[id] = isNorth ? 1 : 0;
+  }
+  updatePreviews(grayPixels, threshold);
+  redraw();
+}
+
+// Apply current cropRect to image → recompute gray → threshold
+function applyCrop() {
+  if (!imgEl) return;
+  const r = cropRect;
+  // Convert from cropCanvas pixels to image natural pixels
+  const sx = (r.x - imgOffX) / imgScale;
+  const sy = (r.y - imgOffY) / imgScale;
+  const sw = r.w / imgScale;
+  const sh = r.h / imgScale;
+  grayPixels = extractGray32(imgEl, sx, sy, sw, sh);
+  applyThreshold(parseInt(threshSlider.value));
+}
+
+// Fit image onto cropCanvas and initialize crop rect
+function setupCropCanvas() {
+  const CW = cropCanvas.width, CH = cropCanvas.height;
+  const nw = imgEl.naturalWidth, nh = imgEl.naturalHeight;
+  imgScale = Math.min(CW / nw, CH / nh);
+  imgOffX  = (CW - nw * imgScale) / 2;
+  imgOffY  = (CH - nh * imgScale) / 2;
+  resetCropRect();
+}
+
+function resetCropRect() {
+  if (!imgEl) return;
+  const dw = imgEl.naturalWidth  * imgScale;
+  const dh = imgEl.naturalHeight * imgScale;
+  let cw, ch;
+  if (dw / dh >= CROP_ASPECT) {
+    ch = dh; cw = ch * CROP_ASPECT;
+  } else {
+    cw = dw; ch = cw / CROP_ASPECT;
+  }
+  cropRect = {
+    x: imgOffX + (dw - cw) / 2,
+    y: imgOffY + (dh - ch) / 2,
+    w: cw, h: ch
+  };
+}
+
+function loadImageFile(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      imgEl = img;
+      const base = file.name.replace(/\.[^.]+$/, "").replace(/[\\/:*?"<>|]+/g, "_") || "image_magnet";
+      exportNameInput.value = base;
+      dropFilename.textContent = file.name;
+      setupCropCanvas();
+      drawCropCanvas();
+      applyCrop();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ─────────────────────────────────────────────────────────────
+//  Crop canvas events
+// ─────────────────────────────────────────────────────────────
+cropCanvas.addEventListener("mousedown", (e) => {
+  if (!imgEl) return;
+  const { x: mx, y: my } = getCropCanvasPos(e);
+  const hit = cropHitTest(mx, my);
+  if (!hit) return;
+  cropDrag = { action: hit, startMx: mx, startMy: my, startRect: { ...cropRect } };
+  e.preventDefault();
+});
+
+cropCanvas.addEventListener("mousemove", (e) => {
+  const { x: mx, y: my } = getCropCanvasPos(e);
+
+  if (!cropDrag) {
+    updateCropCursor(mx, my);
+    return;
+  }
+
+  const dx = mx - cropDrag.startMx;
+  const dy = my - cropDrag.startMy;
+  const { x, y, w, h } = cropDrag.startRect;
+  const MIN_W = 30;
+  let nr = { ...cropDrag.startRect };
+
+  if (cropDrag.action === "move") {
+    nr = { x: x + dx, y: y + dy, w, h };
+  } else {
+    // Resize: keep aspect ratio locked. Use dx as primary driver,
+    // but pick the larger |delta| so diagonal drags feel natural.
+    const primary = Math.abs(dx) >= Math.abs(dy) ? dx : dy * CROP_ASPECT;
+
+    switch (cropDrag.action) {
+      case "se": {
+        const nw2 = Math.max(MIN_W, w + primary);
+        nr = { x, y, w: nw2, h: nw2 / CROP_ASPECT };
+        break;
+      }
+      case "sw": {
+        const nw2 = Math.max(MIN_W, w - primary);
+        nr = { x: x + w - nw2, y, w: nw2, h: nw2 / CROP_ASPECT };
+        break;
+      }
+      case "ne": {
+        const nw2 = Math.max(MIN_W, w + primary);
+        const nh2 = nw2 / CROP_ASPECT;
+        nr = { x, y: y + h - nh2, w: nw2, h: nh2 };
+        break;
+      }
+      case "nw": {
+        const nw2 = Math.max(MIN_W, w - primary);
+        const nh2 = nw2 / CROP_ASPECT;
+        nr = { x: x + w - nw2, y: y + h - nh2, w: nw2, h: nh2 };
+        break;
+      }
+    }
+  }
+
+  cropRect = clampCropRect(nr);
+  drawCropCanvas();
+  applyCrop();
+});
+
+cropCanvas.addEventListener("mouseup",    () => { cropDrag = null; });
+cropCanvas.addEventListener("mouseleave", () => { cropDrag = null; });
+
+// Touch support
+cropCanvas.addEventListener("touchstart", (e) => {
+  e.preventDefault();
+  const t = e.touches[0];
+  cropCanvas.dispatchEvent(new MouseEvent("mousedown", { clientX: t.clientX, clientY: t.clientY }));
+}, { passive: false });
+
+cropCanvas.addEventListener("touchmove", (e) => {
+  e.preventDefault();
+  const t = e.touches[0];
+  cropCanvas.dispatchEvent(new MouseEvent("mousemove", { clientX: t.clientX, clientY: t.clientY }));
+}, { passive: false });
+
+cropCanvas.addEventListener("touchend", () => {
+  cropCanvas.dispatchEvent(new MouseEvent("mouseup", {}));
+});
+
+// ─────────────────────────────────────────────────────────────
+//  Magnet canvas events
+// ─────────────────────────────────────────────────────────────
+function nearestMagnet(pxX, pxY) {
+  let best = -1, bestD2 = Infinity;
+  for (let id = 0; id < TOTAL; id++) {
+    const p = positions[id], q = mmToPx(p.x, p.y);
+    const d2 = (pxX - q.x)**2 + (pxY - q.y)**2;
+    if (d2 < bestD2) { bestD2 = d2; best = id; }
+  }
+  const r = mmToPx(D_MM / 2, 0).x - mmToPx(0, 0).x;
+  return bestD2 <= r * r * 1.2 ? best : -1;
+}
+
+function cycleState(id) {
+  if (id < 0) return;
+  if      (state[id] === 0)  state[id] =  1;
+  else if (state[id] === 1)  state[id] = -1;
+  else                       state[id] =  0;
+}
+
+magnetCanvas.addEventListener("mousedown", (e) => {
+  isDragging = true; dragMoved = false; lastDragId = -1;
+  const rect = magnetCanvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) * (magnetCanvas.width  / rect.width);
+  const y = (e.clientY - rect.top)  * (magnetCanvas.height / rect.height);
+  const id = nearestMagnet(x, y);
+  if (id >= 0) { selected = id; cycleState(id); lastDragId = id; redraw(); }
+});
+
+magnetCanvas.addEventListener("mousemove", (e) => {
+  const rect = magnetCanvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) * (magnetCanvas.width  / rect.width);
+  const y = (e.clientY - rect.top)  * (magnetCanvas.height / rect.height);
+  const id = nearestMagnet(x, y);
+  magnetCanvas.style.cursor = id >= 0 ? "pointer" : "default";
+  if (isDragging && id >= 0 && id !== lastDragId) {
+    dragMoved = true; selected = id; cycleState(id); lastDragId = id; redraw();
+  }
+});
+
+magnetCanvas.addEventListener("mouseup",    () => { isDragging = false; });
+magnetCanvas.addEventListener("mouseleave", () => { isDragging = false; });
+
+// ─────────────────────────────────────────────────────────────
+//  Button controls
+// ─────────────────────────────────────────────────────────────
+document.getElementById("btnClear").addEventListener("click", () => {
+  state.fill(0); selected = -1; redraw();
+});
+
+document.getElementById("btnResetCrop").addEventListener("click", () => {
+  if (!imgEl) return;
+  resetCropRect();
+  drawCropCanvas();
+  applyCrop();
+});
+
+threshSlider.addEventListener("input", () => {
+  threshValueEl.textContent = threshSlider.value;
+  applyThreshold(parseInt(threshSlider.value));
+  if (grayPixels) updatePreviews(grayPixels, parseInt(threshSlider.value));
+});
+
+document.getElementById("btnOtsu").addEventListener("click", () => {
+  if (!grayPixels) return;
+  const t = computeOtsu(grayPixels);
+  threshSlider.value = t;
+  threshValueEl.textContent = t;
+  applyThreshold(t);
+});
+
+document.getElementById("btnInvert").addEventListener("click", () => {
+  invertBinary = !invertBinary;
+  document.getElementById("btnInvert").classList.toggle("is-active", invertBinary);
+  applyThreshold(parseInt(threshSlider.value));
+});
+
+dropZone.addEventListener("click",    () => fileInput.click());
+dropZone.addEventListener("dragover", (e) => { e.preventDefault(); dropZone.classList.add("drag-over"); });
+dropZone.addEventListener("dragleave",()  => dropZone.classList.remove("drag-over"));
+dropZone.addEventListener("drop",     (e) => {
+  e.preventDefault(); dropZone.classList.remove("drag-over");
+  const f = e.dataTransfer.files[0];
+  if (f && f.type.startsWith("image/")) loadImageFile(f);
+});
+fileInput.addEventListener("change", () => {
+  if (fileInput.files[0]) loadImageFile(fileInput.files[0]);
+});
+
+// ─────────────────────────────────────────────────────────────
+//  CSV export
+// ─────────────────────────────────────────────────────────────
+function buildCSV() {
+  const lines = [];
+  for (let col = 0; col < COLS; col++) {
+    const vals = [];
+    for (let pos = 0; pos < ROWS; pos++) {
+      // SAM LAB: column-major, bottom (row=31) → top (row=0)
+      vals.push(state[(ROWS - 1 - pos) * COLS + col] * 7);
+    }
+    lines.push(vals.join(","));
+  }
+  return lines.join("\n");
+}
+
+function sanitizeName(raw) {
+  return (String(raw||"").trim().replace(/\.csv$/i,"").replace(/[\\/:*?"<>|]+/g,"_")) || "image_magnet";
+}
+
+function bumpName(name) {
+  const m = /^(.+?)_(\d+)$/.exec(name);
+  return m ? `${m[1]}_${Number(m[2]) + 1}` : `${name}_2`;
+}
+
+document.getElementById("btnExport").addEventListener("click", () => {
+  const name = sanitizeName(exportNameInput.value);
+  exportNameInput.value = name;
+  const blob = new Blob([buildCSV()], { type: "text/csv;charset=utf-8" });
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement("a"), { href: url, download: `${name}.csv` });
+  a.click();
+  URL.revokeObjectURL(url);
+  exportNameInput.value = bumpName(name);
+});
+
+// ─────────────────────────────────────────────────────────────
+//  Resize + init
+// ─────────────────────────────────────────────────────────────
+function resizeMagnetCanvas() {
+  const wrap = document.getElementById("canvasWrap");
+  const w = Math.max(640, Math.floor(wrap.clientWidth - 36));
+  magnetCanvas.width  = w;
+  magnetCanvas.height = Math.round(w * 0.65);
+  redraw();
+}
+
+function resizeCropCanvas() {
+  const wrap = document.getElementById("cropWrap");
+  const cssW = wrap.clientWidth;
+  const cssH = Math.round(cssW * (256 / 372));
+  // Update internal resolution to match CSS size for crisp rendering
+  const dpr = window.devicePixelRatio || 1;
+  cropCanvas.width  = Math.round(cssW * dpr);
+  cropCanvas.height = Math.round(cssH * dpr);
+  // Re-fit image if loaded
+  if (imgEl) { setupCropCanvas(); }
+  drawCropCanvas();
+}
+
+buildPositions();
+resizeMagnetCanvas();
+resizeCropCanvas();
+drawCropCanvas();
+
+window.addEventListener("resize", () => {
+  resizeMagnetCanvas();
+  resizeCropCanvas();
+});
+</script>
+</body>
+</html>
